@@ -1,6 +1,8 @@
-mlflow==2.12.1
-scikit-learn==1.4.2
-pandas==2.2.2
-numpy==1.26.4
-fastapi==0.110.0
-uvicorn==0.29.0
+mlflow==3.9.0
+scikit-learn==1.8.0
+pandas==2.3.3
+numpy==2.4.2
+fastapi==0.129.0
+uvicorn==0.41.0
+pydantic
+requests
