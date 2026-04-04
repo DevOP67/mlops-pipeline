@@ -1,0 +1,154 @@
+name: 🔄 Re-train & Promote Model
+
+on:
+  # Scheduled: retrain every Sunday at midnight UTC
+  schedule:
+    - cron: "0 0 * * 0"
+
+  # Manual trigger with custom parameters
+  workflow_dispatch:
+    inputs:
+      n_estimators:
+        description: "Number of estimators for RandomForest"
+        required: false
+        default: "100"
+      max_depth:
+        description: "Max depth for RandomForest"
+        required: false
+        default: "5"
+      promote_to_production:
+        description: "Promote new model to production?"
+        required: true
+        default: false
+        type: boolean
+
+env:
+  PYTHON_VERSION: "3.10"
+  PYTHONPATH: .
+
+jobs:
+  retrain:
+    name: 🤖 Retrain ML Model
+    runs-on: ubuntu-latest
+
+    outputs:
+      model_accuracy: ${{ steps.evaluate.outputs.accuracy }}
+      run_id: ${{ steps.train.outputs.run_id }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Override hyperparameters (if provided)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          python - <<'EOF'
+          import yaml, os
+
+          with open("configs/config.yaml", "r") as f:
+              config = yaml.safe_load(f)
+
+          n_est = os.environ.get("N_ESTIMATORS", "100")
+          max_d = os.environ.get("MAX_DEPTH", "5")
+
+          config["model"]["n_estimators"] = int(n_est)
+          config["model"]["max_depth"] = int(max_d)
+
+          with open("configs/config.yaml", "w") as f:
+              yaml.dump(config, f)
+
+          print(f"✅ Config updated: n_estimators={n_est}, max_depth={max_d}")
+          EOF
+        env:
+          N_ESTIMATORS: ${{ github.event.inputs.n_estimators }}
+          MAX_DEPTH: ${{ github.event.inputs.max_depth }}
+
+      - name: Run training pipeline
+        id: train
+        run: |
+          python -m src.pipeline.train_pipeline
+          echo "run_id=$(date +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
+        env:
+          MLFLOW_TRACKING_URI: file:./mlruns
+
+      - name: Extract model accuracy
+        id: evaluate
+        run: |
+          python - <<'EOF'
+          import glob, json, os
+
+          # Find the latest MLflow metric file
+          metric_files = glob.glob("mlruns/**/metrics/accuracy", recursive=True) + \
+                         glob.glob("mlruns/**/metrics/test_accuracy", recursive=True)
+
+          if metric_files:
+              latest = max(metric_files, key=os.path.getmtime)
+              with open(latest) as f:
+                  line = f.readline().strip()
+                  # MLflow format: "timestamp value step"
+                  accuracy = line.split()[1] if len(line.split()) >= 2 else line
+              print(f"✅ Model Accuracy: {accuracy}")
+              with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
+                  print(f"accuracy={accuracy}", file=fh)
+          else:
+              print("⚠️  No accuracy metric file found.")
+              with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
+                  print("accuracy=unknown", file=fh)
+          EOF
+
+      - name: Upload retrained model artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: retrained-model-${{ steps.train.outputs.run_id }}
+          path: |
+            mlruns/
+            artifacts/
+            configs/config.yaml
+          retention-days: 30
+
+  promote:
+    name: 🏆 Promote Model to Production
+    runs-on: ubuntu-latest
+    needs: retrain
+    if: >
+      github.event.inputs.promote_to_production == 'true' ||
+      github.event_name == 'schedule'
+
+    steps:
+      - name: Accuracy gate check
+        run: |
+          ACCURACY="${{ needs.retrain.outputs.model_accuracy }}"
+          echo "📊 Model accuracy: ${ACCURACY}"
+
+          # Only auto-promote if accuracy is above threshold
+          if python3 -c "exit(0 if float('${ACCURACY}') >= 0.85 else 1)" 2>/dev/null; then
+            echo "✅ Accuracy threshold passed — promoting model."
+          else
+            echo "⚠️  Accuracy below 0.85 — skipping auto-promotion."
+          fi
+
+      - name: Trigger CD pipeline
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'cd.yml',
+              ref: 'main',
+              inputs: {
+                environment: 'production'
+              }
+            });
+            console.log('✅ CD pipeline triggered successfully!');

@@ -1,0 +1,46 @@
+# =============================================================================
+# deploy/mlflow.service
+# systemd service unit for the MLflow Tracking Server
+#
+# Install: sudo cp mlflow.service /etc/systemd/system/
+#          sudo systemctl daemon-reload
+#          sudo systemctl enable --now mlflow.service
+# =============================================================================
+
+[Unit]
+Description=MLOps Pipeline — MLflow Experiment Tracking Server
+Documentation=https://mlflow.org
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/mlops-pipeline
+
+# Environment
+Environment="PYTHONPATH=/home/ubuntu/mlops-pipeline"
+
+# Start MLflow with SQLite backend (no external DB needed)
+ExecStart=/home/ubuntu/mlops-pipeline/venv/bin/mlflow server \
+    --backend-store-uri sqlite:///home/ubuntu/mlops-pipeline/mlflow.db \
+    --default-artifact-root /home/ubuntu/mlops-pipeline/mlruns \
+    --host 127.0.0.1 \
+    --port 5000 \
+    --workers 1
+
+# Restart policy
+Restart=always
+RestartSec=10
+
+# Logging
+StandardOutput=append:/home/ubuntu/mlops-pipeline/logs/mlflow.log
+StandardError=append:/home/ubuntu/mlops-pipeline/logs/mlflow_error.log
+
+# Security
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/home/ubuntu/mlops-pipeline
+
+[Install]
+WantedBy=multi-user.target

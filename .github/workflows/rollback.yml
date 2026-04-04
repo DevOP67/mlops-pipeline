@@ -1,0 +1,71 @@
+name: ⏪ Rollback Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_sha:
+        description: "Git commit SHA to roll back to (leave empty for previous commit)"
+        required: false
+        default: ""
+      reason:
+        description: "Reason for rollback (for audit log)"
+        required: true
+        default: "Unspecified issue"
+
+jobs:
+  rollback:
+    name: ⏪ Roll Back to Safe Commit
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 10   # fetch enough history for rollback
+
+      - name: Resolve rollback target SHA
+        id: resolve
+        run: |
+          if [[ -n "${{ github.event.inputs.target_sha }}" ]]; then
+            TARGET_SHA="${{ github.event.inputs.target_sha }}"
+          else
+            # Default: previous commit on main
+            TARGET_SHA=$(git log --oneline -2 | tail -1 | awk '{print $1}')
+          fi
+          echo "target_sha=${TARGET_SHA}" >> $GITHUB_OUTPUT
+          echo "🎯 Rolling back to: ${TARGET_SHA}"
+          echo "📌 Reason: ${{ github.event.inputs.reason }}"
+
+      - name: Setup SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add server to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.PROD_SERVER_IP }} >> ~/.ssh/known_hosts
+
+      - name: Execute rollback on server
+        run: |
+          ssh ${{ secrets.SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} \
+            "bash ~/mlops-pipeline/deploy/rollback.sh ${{ steps.resolve.outputs.target_sha }}"
+
+      - name: Post-rollback health check
+        run: |
+          sleep 10
+          curl -f http://${{ secrets.PROD_SERVER_IP }}:8000/ \
+            && echo "✅ Rollback successful — API is healthy!" \
+            || (echo "❌ API health check failed after rollback!" && exit 1)
+
+      - name: Create rollback audit tag
+        run: |
+          git config user.email "cicd-bot@mlops-pipeline"
+          git config user.name "CI/CD Bot"
+          git tag \
+            "rollback-$(date +%Y%m%d%H%M%S)-to-${{ steps.resolve.outputs.target_sha }}" \
+            HEAD \
+            -m "Rollback by ${{ github.actor }}: ${{ github.event.inputs.reason }}"
+          git push origin --tags

@@ -1,0 +1,58 @@
+# =============================================================================
+# deploy/mlops-api.service
+# systemd service unit for the FastAPI (uvicorn) server
+#
+# Install: sudo cp mlops-api.service /etc/systemd/system/
+#          sudo systemctl daemon-reload
+#          sudo systemctl enable --now mlops-api.service
+# =============================================================================
+
+[Unit]
+Description=MLOps Pipeline — FastAPI Inference API
+Documentation=https://github.com/yourusername/mlops-pipeline
+After=network.target mlflow.service
+Wants=mlflow.service
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/mlops-pipeline
+
+# Environment
+Environment="PYTHONPATH=/home/ubuntu/mlops-pipeline"
+Environment="MLFLOW_TRACKING_URI=sqlite:///home/ubuntu/mlops-pipeline/mlflow.db"
+Environment="ENV=production"
+
+# Start command — uvicorn with multiple workers for concurrency
+ExecStart=/home/ubuntu/mlops-pipeline/venv/bin/uvicorn \
+    backend.app:app \
+    --host 0.0.0.0 \
+    --port 8000 \
+    --workers 2 \
+    --log-level info \
+    --access-log \
+    --log-config /home/ubuntu/mlops-pipeline/deploy/log_config.json
+
+# Graceful shutdown — allow 30s for in-flight requests to complete
+TimeoutStopSec=30
+KillSignal=SIGTERM
+KillMode=mixed
+
+# Restart policy — auto-restart on crash
+Restart=always
+RestartSec=5
+StartLimitInterval=60
+StartLimitBurst=3
+
+# Logging
+StandardOutput=append:/home/ubuntu/mlops-pipeline/logs/api.log
+StandardError=append:/home/ubuntu/mlops-pipeline/logs/api_error.log
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/home/ubuntu/mlops-pipeline
+
+[Install]
+WantedBy=multi-user.target

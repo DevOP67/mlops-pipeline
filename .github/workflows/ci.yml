@@ -1,0 +1,73 @@
+# .github/workflows/ci.yml
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ── Job 1: Test & Lint ──────────────────────────────────────────
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-cov httpx flake8 black isort pytest-env
+
+      - name: Lint
+        run: |
+          flake8 src/ backend/ tests/ --max-line-length=120 --exclude=venv,__pycache__
+
+      - name: Format check
+        run: |
+          black --check . --exclude "venv/"
+          isort --check-only . --skip venv
+
+      - name: Train pipeline (needed for artifact before API tests)
+        env:
+          MLFLOW_TRACKING_URI: file:./mlruns
+          PYTHONPATH: .
+        run: python -m src.pipeline.train_pipeline
+
+      - name: Run tests with coverage
+        env:
+          MLFLOW_TRACKING_URI: file:./mlruns
+          PYTHONPATH: .
+        run: |
+          pytest tests/ --cov=src --cov=backend \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            -v
+
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+        continue-on-error: true  # Don't fail if Codecov isn't configured
+
+  # ── Job 2: Deploy to Render (only on push to main) ──────────────
+  deploy:
+    needs: test          # Only runs if tests pass
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Trigger Render Deploy Hook
+        run: |
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
