@@ -6,44 +6,44 @@ on:
   pull_request:
     branches: [main]
 
-# ✅ GLOBAL FIX: Correct working directory
+# ✅ CORRECT PATH (case-sensitive)
 defaults:
   run:
-    working-directory: MLOps/mlops-pipeline
+    working-directory: MLOPS/mlops-pipeline
 
 jobs:
-  # ── Job 1: Test & Lint ──────────────────────────────────────────
+  # ─────────────── CI JOB ───────────────
   test:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.10
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
-      # ✅ FIXED: Correct cache path
+      # ✅ FIXED cache path
       - name: Cache pip dependencies
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('MLOps/mlops-pipeline/requirements.txt') }}
+          key: ${{ runner.os }}-pip-${{ hashFiles('MLOPS/mlops-pipeline/requirements.txt') }}
+
+      # ✅ DEBUG (keep for now)
+      - name: Debug structure
+        run: |
+          echo "PWD:"
+          pwd
+          echo "FILES:"
+          ls -la
 
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
           pip install pytest pytest-cov httpx flake8 black isort pytest-env
-
-      # ✅ DEBUG STEP (VERY IMPORTANT)
-      - name: Debug directory
-        run: |
-          echo "Current directory:"
-          pwd
-          echo "Files:"
-          ls -la
 
       - name: Lint
         run: |
@@ -54,13 +54,13 @@ jobs:
           black --check . --exclude "venv/"
           isort --check-only . --skip venv
 
-      - name: Train pipeline (needed before tests)
+      - name: Train pipeline
         env:
           MLFLOW_TRACKING_URI: file:./mlruns
           PYTHONPATH: .
         run: python -m src.pipeline.train_pipeline
 
-      - name: Run tests with coverage
+      - name: Run tests
         env:
           MLFLOW_TRACKING_URI: file:./mlruns
           PYTHONPATH: .
@@ -70,22 +70,21 @@ jobs:
             --cov-report=xml \
             -v
 
-      - name: Upload coverage report
+      - name: Upload coverage
         uses: codecov/codecov-action@v4
         with:
           file: ./coverage.xml
         continue-on-error: true
 
-  # ── Job 2: Deploy to Render ─────────────────────────────────────
+  # ─────────────── CD JOB ───────────────
   deploy:
     needs: test
     runs-on: ubuntu-latest
 
-    # ✅ Only deploy on push to main
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
-      - name: Trigger Render Deploy Hook
+      - name: Trigger Render Deploy
         run: |
-          echo "Triggering Render Deploy..."
+          echo "Deploying to Render..."
           curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
