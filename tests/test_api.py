@@ -31,9 +31,9 @@ class TestHealthEndpoint:
         response = client.get("/")
         assert response.status_code == 200
 
-    def test_root_returns_json(self, client):
+    def test_root_returns_html(self, client):
         response = client.get("/")
-        assert response.headers["content-type"] == "application/json"
+        assert "text/html" in response.headers["content-type"]
 
     def test_root_message_present(self, client):
         response = client.get("/")
@@ -80,7 +80,8 @@ class TestPredictEndpoint:
     def test_predict_returns_string_or_int(self, client):
         response = client.post("/predict", json=VALID_PAYLOAD)
         pred = response.json()["prediction"]
-        assert isinstance(pred, (str, int, float)), f"Unexpected prediction type: {type(pred)}"
+        assert isinstance(pred, (str, int, float)
+                          ), f"Unexpected prediction type: {type(pred)}"
 
     def test_predict_setosa(self, client):
         """Setosa sample should not return None."""

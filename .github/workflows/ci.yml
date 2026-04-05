@@ -34,7 +34,6 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          pip install pytest pytest-cov httpx flake8 black isort pytest-env
 
       - name: Lint
         run: flake8 src backend tests --max-line-length=120

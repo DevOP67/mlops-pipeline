@@ -12,7 +12,8 @@ from src.utils.logger import get_logger
 
 def load_config(path="configs/config.yaml"):
     if not os.path.exists(path):
-        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        base_dir = os.path.dirname(os.path.dirname(
+            os.path.dirname(os.path.abspath(__file__))))
         path = os.path.join(base_dir, "configs", "config.yaml")
 
     with open(path, "r") as file:
@@ -40,7 +41,8 @@ def run_pipeline():
     experiment_name = config["experiment"]["name"]
     mlflow.set_experiment(experiment_name)
 
-    logger.info(f"MLflow tracking URI: {tracking_uri} | Experiment: '{experiment_name}'")
+    logger.info(
+        f"MLflow tracking URI: {tracking_uri} | Experiment: '{experiment_name}'")
 
     with mlflow.start_run():
         preprocessor = Preprocessor(config)
@@ -51,9 +53,6 @@ def run_pipeline():
 
         evaluator = Evaluator(config)
         evaluator.evaluate(model, X_test, y_test)
-
-        # Log model to MLflow
-        mlflow.sklearn.log_model(model, artifact_path="model")
 
         # Also save as plain pickle for the API to load without an MLflow server
         save_model_pickle(model)

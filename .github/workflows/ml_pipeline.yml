@@ -41,7 +41,7 @@ jobs:
       # 5️⃣ Run Training Pipeline
       - name: Run training
         run: |
-          python -m src.train
+          python -m src.pipeline.train_pipeline
 
       # 6️⃣ Upload MLflow Artifacts (optional but useful)
       - name: Upload MLflow artifacts

@@ -23,7 +23,8 @@ def config():
     """Load the real project config."""
     import yaml
 
-    config_path = os.path.join(os.path.dirname(__file__), "..", "configs", "config.yaml")
+    config_path = os.path.join(os.path.dirname(
+        __file__), "..", "configs", "config.yaml")
     with open(config_path, "r") as f:
         return yaml.safe_load(f)
 
