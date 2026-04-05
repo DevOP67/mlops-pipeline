@@ -6,85 +6,73 @@ on:
   pull_request:
     branches: [main]
 
-# ✅ CORRECT PATH (case-sensitive)
-defaults:
-  run:
-    working-directory: MLOPS/mlops-pipeline
-
 jobs:
-  # ─────────────── CI JOB ───────────────
   test:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Debug root (IMPORTANT)
+        run: |
+          echo "ROOT:"
+          pwd
+          ls -la
+
+      - name: Debug MLOPS folder
+        run: |
+          ls -la MLOPS
+
+      - name: Debug pipeline folder
+        run: |
+          ls -la MLOPS/mlops-pipeline
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
-      # ✅ FIXED cache path
-      - name: Cache pip dependencies
+      - name: Cache deps
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('MLOPS/mlops-pipeline/requirements.txt') }}
 
-      # ✅ DEBUG (keep for now)
-      - name: Debug structure
-        run: |
-          echo "PWD:"
-          pwd
-          echo "FILES:"
-          ls -la
-
       - name: Install dependencies
+        working-directory: MLOPS/mlops-pipeline
         run: |
           pip install -r requirements.txt
           pip install pytest pytest-cov httpx flake8 black isort pytest-env
 
       - name: Lint
-        run: |
-          flake8 src backend tests --max-line-length=120 --exclude=venv,__pycache__
+        working-directory: MLOPS/mlops-pipeline
+        run: flake8 src backend tests --max-line-length=120
 
       - name: Format check
+        working-directory: MLOPS/mlops-pipeline
         run: |
-          black --check . --exclude "venv/"
-          isort --check-only . --skip venv
+          black --check .
+          isort --check-only .
 
       - name: Train pipeline
+        working-directory: MLOPS/mlops-pipeline
         env:
-          MLFLOW_TRACKING_URI: file:./mlruns
           PYTHONPATH: .
+          MLFLOW_TRACKING_URI: file:./mlruns
         run: python -m src.pipeline.train_pipeline
 
       - name: Run tests
+        working-directory: MLOPS/mlops-pipeline
         env:
-          MLFLOW_TRACKING_URI: file:./mlruns
           PYTHONPATH: .
-        run: |
-          pytest tests/ --cov=src --cov=backend \
-            --cov-report=term-missing \
-            --cov-report=xml \
-            -v
+        run: pytest tests/
 
-      - name: Upload coverage
-        uses: codecov/codecov-action@v4
-        with:
-          file: ./coverage.xml
-        continue-on-error: true
-
-  # ─────────────── CD JOB ───────────────
   deploy:
     needs: test
     runs-on: ubuntu-latest
-
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main'
 
     steps:
-      - name: Trigger Render Deploy
-        run: |
-          echo "Deploying to Render..."
-          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
+      - name: Deploy to Render
+        run: curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
