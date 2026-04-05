@@ -29,8 +29,7 @@ def predict_endpoint(data: IrisInput):
     current_model = get_model()
 
     # Pack feature list into 2D array matrix required by Sklearn Pipeline API
-    features = np.array(
-        [[data.sepal_length, data.sepal_width, data.petal_length, data.petal_width]])
+    features = np.array([[data.sepal_length, data.sepal_width, data.petal_length, data.petal_width]])
 
     prediction = current_model.predict(features)
 

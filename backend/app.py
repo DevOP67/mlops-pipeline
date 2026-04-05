@@ -5,8 +5,7 @@ from backend.routes import predict
 
 app = FastAPI(
     title="🌌 Iris Intelligence — MLOps API",
-    description=(
-        "High-performance machine learning inference gateway for " "Iris-species classification."),
+    description=("High-performance machine learning inference gateway for " "Iris-species classification."),
     version="1.0.0",
 )
 

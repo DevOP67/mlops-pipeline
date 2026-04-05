@@ -23,8 +23,7 @@ class Evaluator:
 
         # Log trained model pipeline safely inside an MLflow artifact
         model_name = "IrisClassifier"
-        mlflow.sklearn.log_model(
-            sk_model=model, artifact_path="model", registered_model_name=model_name)
+        mlflow.sklearn.log_model(sk_model=model, artifact_path="model", registered_model_name=model_name)
         self.logger.info(f"Model logged to MLflow with name: {model_name}")
 
         return accuracy

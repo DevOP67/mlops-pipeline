@@ -80,8 +80,7 @@ class TestPredictEndpoint:
     def test_predict_returns_string_or_int(self, client):
         response = client.post("/predict", json=VALID_PAYLOAD)
         pred = response.json()["prediction"]
-        assert isinstance(pred, (str, int, float)
-                          ), f"Unexpected prediction type: {type(pred)}"
+        assert isinstance(pred, (str, int, float)), f"Unexpected prediction type: {type(pred)}"
 
     def test_predict_setosa(self, client):
         """Setosa sample should not return None."""

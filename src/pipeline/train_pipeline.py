@@ -12,8 +12,7 @@ from src.utils.logger import get_logger
 
 def load_config(path="configs/config.yaml"):
     if not os.path.exists(path):
-        base_dir = os.path.dirname(os.path.dirname(
-            os.path.dirname(os.path.abspath(__file__))))
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         path = os.path.join(base_dir, "configs", "config.yaml")
 
     with open(path, "r") as file:
@@ -41,8 +40,7 @@ def run_pipeline():
     experiment_name = config["experiment"]["name"]
     mlflow.set_experiment(experiment_name)
 
-    logger.info(
-        f"MLflow tracking URI: {tracking_uri} | Experiment: '{experiment_name}'")
+    logger.info(f"MLflow tracking URI: {tracking_uri} | Experiment: '{experiment_name}'")
 
     with mlflow.start_run():
         preprocessor = Preprocessor(config)
