@@ -5,8 +5,9 @@ All tests use file-based MLflow to avoid needing a running server.
 """
 
 import os
-import pytest
+
 import numpy as np
+import pytest
 
 # Use file-based MLflow for tests — no server needed
 os.environ.setdefault("MLFLOW_TRACKING_URI", "file:./mlruns")
@@ -16,10 +17,12 @@ os.environ.setdefault("MLFLOW_TRACKING_URI", "file:./mlruns")
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="module")
 def config():
     """Load the real project config."""
     import yaml
+
     config_path = os.path.join(os.path.dirname(__file__), "..", "configs", "config.yaml")
     with open(config_path, "r") as f:
         return yaml.safe_load(f)
@@ -29,6 +32,7 @@ def config():
 def preprocessed_data(config):
     """Run the preprocessor once and share across tests."""
     from src.components.preprocessing import Preprocessor
+
     prep = Preprocessor(config)
     return prep.process()
 
@@ -37,17 +41,21 @@ def preprocessed_data(config):
 # Imports & Dependencies
 # ---------------------------------------------------------------------------
 
+
 class TestImports:
     def test_sklearn_importable(self):
         import sklearn
+
         assert sklearn.__version__ is not None
 
     def test_mlflow_importable(self):
         import mlflow
+
         assert mlflow.__version__ is not None
 
     def test_pandas_importable(self):
         import pandas as pd
+
         assert pd.__version__ is not None
 
     def test_numpy_importable(self):
@@ -55,12 +63,14 @@ class TestImports:
 
     def test_fastapi_importable(self):
         import fastapi
+
         assert fastapi.__version__ is not None
 
 
 # ---------------------------------------------------------------------------
 # Config Loading
 # ---------------------------------------------------------------------------
+
 
 class TestConfig:
     def test_config_loads(self, config):
@@ -84,6 +94,7 @@ class TestConfig:
 # ---------------------------------------------------------------------------
 # Preprocessor
 # ---------------------------------------------------------------------------
+
 
 class TestPreprocessor:
     def test_process_returns_four_arrays(self, preprocessed_data):
@@ -121,10 +132,12 @@ class TestPreprocessor:
 # Model Trainer
 # ---------------------------------------------------------------------------
 
+
 class TestModelTrainer:
     @pytest.fixture(scope="class")
     def trained_model(self, config, preprocessed_data):
         from src.components.model_trainer import ModelTrainer
+
         X_train, _, y_train, _ = preprocessed_data
         trainer = ModelTrainer(config)
         return trainer.train(X_train, y_train)
@@ -157,6 +170,7 @@ class TestModelTrainer:
 
     def test_training_accuracy_above_threshold(self, trained_model, preprocessed_data):
         from sklearn.metrics import accuracy_score
+
         X_train, _, y_train, _ = preprocessed_data
         preds = trained_model.predict(X_train)
         acc = accuracy_score(y_train, preds)
@@ -167,11 +181,13 @@ class TestModelTrainer:
 # Evaluator
 # ---------------------------------------------------------------------------
 
+
 class TestEvaluator:
     def test_evaluator_runs_without_error(self, config, preprocessed_data):
-        from src.components.model_trainer import ModelTrainer
-        from src.components.evaluation import Evaluator
         import mlflow
+
+        from src.components.evaluation import Evaluator
+        from src.components.model_trainer import ModelTrainer
 
         X_train, X_test, y_train, y_test = preprocessed_data
         trainer = ModelTrainer(config)
@@ -182,17 +198,19 @@ class TestEvaluator:
 
         with mlflow.start_run():
             evaluator = Evaluator(config)
-            evaluator.evaluate(model, X_test, y_test)   # should not raise
+            evaluator.evaluate(model, X_test, y_test)  # should not raise
 
 
 # ---------------------------------------------------------------------------
 # Full Pipeline Integration (lightweight, no server)
 # ---------------------------------------------------------------------------
 
+
 class TestFullPipeline:
     def test_pipeline_runs_end_to_end(self):
         """Run the complete pipeline using file-based MLflow."""
         import mlflow
+
         from src.pipeline.train_pipeline import run_pipeline
 
         mlflow.set_tracking_uri("file:./mlruns")

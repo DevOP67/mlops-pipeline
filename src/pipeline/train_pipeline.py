@@ -1,11 +1,12 @@
 import os
 import pickle
-import yaml
-import mlflow
 
+import mlflow
+import yaml
+
+from src.components.evaluation import Evaluator
 from src.components.model_trainer import ModelTrainer
 from src.components.preprocessing import Preprocessor
-from src.components.evaluation import Evaluator
 from src.utils.logger import get_logger
 
 

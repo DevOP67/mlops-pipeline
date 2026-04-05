@@ -7,15 +7,16 @@ These run in CI without a live server.
 import pytest
 from fastapi.testclient import TestClient
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def client():
     """Create a TestClient that shares one app instance for the whole module."""
     from backend.app import app
+
     with TestClient(app) as c:
         yield c
 
@@ -23,6 +24,7 @@ def client():
 # ---------------------------------------------------------------------------
 # Health / Root
 # ---------------------------------------------------------------------------
+
 
 class TestHealthEndpoint:
     def test_root_returns_200(self, client):
@@ -78,8 +80,7 @@ class TestPredictEndpoint:
     def test_predict_returns_string_or_int(self, client):
         response = client.post("/predict", json=VALID_PAYLOAD)
         pred = response.json()["prediction"]
-        assert isinstance(pred, (str, int, float)), \
-            f"Unexpected prediction type: {type(pred)}"
+        assert isinstance(pred, (str, int, float)), f"Unexpected prediction type: {type(pred)}"
 
     def test_predict_setosa(self, client):
         """Setosa sample should not return None."""

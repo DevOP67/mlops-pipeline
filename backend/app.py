@@ -1,14 +1,16 @@
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
+
 from backend.routes import predict
 
 app = FastAPI(
     title="🌌 Iris Intelligence — MLOps API",
     description="High-performance machine learning inference gateway for Iris-species classification.",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 app.include_router(predict.router)
+
 
 @app.get("/", response_class=HTMLResponse)
 def home():

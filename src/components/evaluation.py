@@ -1,7 +1,9 @@
 import mlflow
 import mlflow.sklearn
 from sklearn.metrics import accuracy_score
+
 from src.utils.logger import get_logger
+
 
 class Evaluator:
     def __init__(self, config: dict):
@@ -19,13 +21,9 @@ class Evaluator:
         mlflow.log_params(self.config["model"])
         mlflow.log_metric("accuracy", accuracy)
 
-        # Log trained model pipeline safely inside an MLflow artifact 
+        # Log trained model pipeline safely inside an MLflow artifact
         model_name = "IrisClassifier"
-        mlflow.sklearn.log_model(
-            sk_model=model,
-            artifact_path="model",
-            registered_model_name=model_name
-        )
+        mlflow.sklearn.log_model(sk_model=model, artifact_path="model", registered_model_name=model_name)
         self.logger.info(f"Model logged to MLflow with name: {model_name}")
-        
+
         return accuracy
