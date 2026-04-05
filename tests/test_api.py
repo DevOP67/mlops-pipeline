@@ -31,9 +31,9 @@ class TestHealthEndpoint:
         response = client.get("/")
         assert response.status_code == 200
 
-    def test_root_returns_html(self, client):
+    def test_root_returns_json(self, client):
         response = client.get("/")
-        assert "text/html" in response.headers["content-type"]
+        assert "application/json" in response.headers["content-type"]
 
     def test_root_message_present(self, client):
         response = client.get("/")
