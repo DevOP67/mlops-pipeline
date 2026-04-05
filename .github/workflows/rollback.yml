@@ -16,14 +16,13 @@ jobs:
   rollback:
     name: ⏪ Roll Back to Safe Commit
     runs-on: ubuntu-latest
-    environment:
-      name: production
+    environment: production
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 10   # fetch enough history for rollback
+          fetch-depth: 10
 
       - name: Resolve rollback target SHA
         id: resolve
@@ -31,7 +30,6 @@ jobs:
           if [[ -n "${{ github.event.inputs.target_sha }}" ]]; then
             TARGET_SHA="${{ github.event.inputs.target_sha }}"
           else
-            # Default: previous commit on main
             TARGET_SHA=$(git log --oneline -2 | tail -1 | awk '{print $1}')
           fi
           echo "target_sha=${TARGET_SHA}" >> $GITHUB_OUTPUT
@@ -46,17 +44,17 @@ jobs:
       - name: Add server to known hosts
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.PROD_SERVER_IP }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H "${{ secrets.PROD_SERVER_IP }}" >> ~/.ssh/known_hosts
 
       - name: Execute rollback on server
         run: |
-          ssh ${{ secrets.SERVER_USER }}@${{ secrets.PROD_SERVER_IP }} \
-            "bash ~/mlops-pipeline/deploy/rollback.sh ${{ steps.resolve.outputs.target_sha }}"
+          ssh "${{ secrets.SERVER_USER }}@${{ secrets.PROD_SERVER_IP }}" \
+            "bash ~/mlops-pipeline/deploy/rollback.sh '${{ steps.resolve.outputs.target_sha }}'"
 
       - name: Post-rollback health check
         run: |
-          sleep 10
-          curl -f http://${{ secrets.PROD_SERVER_IP }}:8000/ \
+          sleep 15
+          curl --retry 3 --retry-delay 5 -f "http://${{ secrets.PROD_SERVER_IP }}:8000/" \
             && echo "✅ Rollback successful — API is healthy!" \
             || (echo "❌ API health check failed after rollback!" && exit 1)
 
