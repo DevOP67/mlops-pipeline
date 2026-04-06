@@ -22,15 +22,15 @@ def root():
 @app.get("/ui", response_class=HTMLResponse)
 def ui():
     return """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Iris ML UI</title>
-    </head>
-    <body>
-        <h1>Iris Intelligence 🚀</h1>
-        <p>Your ML API is live!</p>
-        <p>Go to <a href="/docs">/docs</a> to test the model</p>
-    </body>
-    </html>
-    """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Iris ML UI</title>
+</head>
+<body>
+    <h1>Iris Intelligence 🚀</h1>
+    <p>Your ML API is live!</p>
+    <p>Go to <a href="/docs">/docs</a> to test the model</p>
+</body>
+</html>
+"""
